@@ -11,8 +11,12 @@
 #include "utilstrencodings.h"
 
 #include <assert.h>
+#include <script/standard.h>
 
 #include "chainparamsseeds.h"
+#include "checkpoints.h"
+#include "base58.h"
+
 
 static CBlock CreateGenesisBlock(const char* pszTimestamp, const CScript& genesisOutputScript, uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CAmount& genesisReward)
 {
@@ -58,6 +62,33 @@ void CChainParams::UpdateVersionBitsParameters(Consensus::DeploymentPos d, int64
     consensus.vDeployments[d].nStartTime = nStartTime;
     consensus.vDeployments[d].nTimeout = nTimeout;
 }
+
+
+bool CChainParams::AddCheckPoint(int const height, const uint256 hash) const{
+
+    auto it = std::find_if(checkpointData.mapCheckpoints.begin(), checkpointData.mapCheckpoints.end(),
+                           [&](std::map<int, uint256>::value_type pair) { return pair.first >= height; });
+
+    if (it != checkpointData.mapCheckpoints.end())
+        return false;
+
+    checkpointData.mapCheckpoints.insert(std::pair<const int, uint256>(height, hash));
+    return true;
+
+}
+
+
+
+void CChainParams::SetSbtcForkHeigh(int height)const {
+    consensus.SBTCForkHeight = height;
+}
+
+void CChainParams:: SetSbtcForkDec(int no) const{
+    consensus.SBTCdifDec = no;
+}
+
+
+
 
 /**
  * Main network
@@ -106,6 +137,9 @@ public:
         // By default assume that the signatures in ancestors of this block are valid.
         consensus.defaultAssumeValid = uint256S("0x0000000000000000003b9ce759c2a087d52abc4266f8f4ebd6d768b89defa50a"); //477890
 
+
+        consensus.SBTCForkHeight = 498888;
+        consensus.SBTCdifDec = 26000;
         /**
          * The message start string is designed to be unlikely to occur in normal data.
          * The characters are rarely used upper ASCII, not valid as UTF-8, and produce
@@ -115,7 +149,7 @@ public:
         pchMessageStart[1] = 0xbe;
         pchMessageStart[2] = 0xb4;
         pchMessageStart[3] = 0xd9;
-        nDefaultPort = 8333;
+        nDefaultPort = 8334;
         nPruneAfterHeight = 100000;
 
         genesis = CreateGenesisBlock(1231006505, 2083236893, 0x1d00ffff, 1, 50 * COIN);
@@ -124,12 +158,12 @@ public:
         assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
 
         // Note that of those with the service bits flag, most only support a subset of possible options
-        vSeeds.emplace_back("seed.bitcoin.sipa.be", true); // Pieter Wuille, only supports x1, x5, x9, and xd
-        vSeeds.emplace_back("dnsseed.bluematt.me", true); // Matt Corallo, only supports x9
-        vSeeds.emplace_back("dnsseed.bitcoin.dashjr.org", false); // Luke Dashjr
-        vSeeds.emplace_back("seed.bitcoinstats.com", true); // Christian Decker, supports x1 - xf
-        vSeeds.emplace_back("seed.bitcoin.jonasschnelli.ch", true); // Jonas Schnelli, only supports x1, x5, x9, and xd
-        vSeeds.emplace_back("seed.btc.petertodd.org", true); // Peter Todd, only supports x1, x5, x9, and xd
+
+        vSeeds.emplace_back("seed.superbtca.com", false);
+        vSeeds.emplace_back("seed.superbtca.info", false);
+        vSeeds.emplace_back("seed.superbtc.org", false);
+//        vSeeds.emplace_back("seed.bitcoin.sipa.be", true);
+//        vSeeds.emplace_back("dnsseed.bluematt.me", true);
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,0);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,5);
@@ -142,6 +176,8 @@ public:
         fDefaultConsistencyChecks = false;
         fRequireStandard = true;
         fMineBlocksOnDemand = false;
+        // addrss :12XC2eso5P464A6KzRNCnZfrzKSTWC15XE
+        cCheckPointPubKey= CPubKey(ParseHex("034e97579c5613b3eb49cfc2367229576613450128d795513a6bd2a8fd62122a85"));
 
         checkpointData = (CCheckpointData) {
             {
@@ -157,7 +193,8 @@ public:
                 {225430, uint256S("0x00000000000001c108384350f74090433e7fcf79a606b8e797f065b130575932")},
                 {250000, uint256S("0x000000000000003887df1f29024b06fc2200b55f8af8f35453d7be294df2d214")},
                 {279000, uint256S("0x0000000000000001ae8c72a0b0c301f67e3afca10e819efa9041e458e9bd7e40")},
-                {295000, uint256S("0x00000000000000004d9b4ef50f0f9d686fd69db2e03af35a100370c64632a983")},
+                {499060, uint256S("0x000000000000000cdb7383336c6b76dccd482a93200ec6f842fc538fbff6e0dc")},
+
             }
         };
 
@@ -169,6 +206,7 @@ public:
             3.1         // * estimated number of transactions per second after that timestamp
         };
     }
+
 };
 
 /**
@@ -210,11 +248,13 @@ public:
         // By default assume that the signatures in ancestors of this block are valid.
         consensus.defaultAssumeValid = uint256S("0x0000000002e9e7b00e1f6dc5123a04aad68dd0f0968d8c7aa45f6640795c37b1"); //1135275
 
+        consensus.SBTCForkHeight = 0;
+        consensus.SBTCdifDec = 10;
         pchMessageStart[0] = 0x0b;
         pchMessageStart[1] = 0x11;
         pchMessageStart[2] = 0x09;
         pchMessageStart[3] = 0x07;
-        nDefaultPort = 18333;
+        nDefaultPort = 18334;
         nPruneAfterHeight = 1000;
 
         genesis = CreateGenesisBlock(1296688602, 414098458, 0x1d00ffff, 1, 50 * COIN);
@@ -225,9 +265,7 @@ public:
         vFixedSeeds.clear();
         vSeeds.clear();
         // nodes with support for servicebits filtering should be at the top
-        vSeeds.emplace_back("testnet-seed.bitcoin.jonasschnelli.ch", true);
-        vSeeds.emplace_back("seed.tbtc.petertodd.org", true);
-        vSeeds.emplace_back("testnet-seed.bluematt.me", false);
+        vSeeds.emplace_back("seedtest.superbtc.org", true);
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,111);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,196);
@@ -240,7 +278,9 @@ public:
         fDefaultConsistencyChecks = false;
         fRequireStandard = false;
         fMineBlocksOnDemand = false;
-
+        //      address:mnMi2YN5uTfUaKnJZzbTYE3TvKy4n2iAbL
+        //      private key:................
+        cCheckPointPubKey= CPubKey(ParseHex("02eac9199fe6f2db8ddf159c3e88739471077f14fe6c0981fb7fe1f2fc7903f0d7"));
 
         checkpointData = (CCheckpointData) {
             {
@@ -256,6 +296,9 @@ public:
         };
 
     }
+
+
+
 };
 
 /**
@@ -293,11 +336,13 @@ public:
         // By default assume that the signatures in ancestors of this block are valid.
         consensus.defaultAssumeValid = uint256S("0x00");
 
+        consensus.SBTCForkHeight = 1000;
+        consensus.SBTCdifDec = 100;
         pchMessageStart[0] = 0xfa;
         pchMessageStart[1] = 0xbf;
         pchMessageStart[2] = 0xb5;
         pchMessageStart[3] = 0xda;
-        nDefaultPort = 18444;
+        nDefaultPort = 18445;
         nPruneAfterHeight = 1000;
 
         genesis = CreateGenesisBlock(1296688602, 2, 0x207fffff, 1, 50 * COIN);
@@ -311,6 +356,9 @@ public:
         fDefaultConsistencyChecks = true;
         fRequireStandard = false;
         fMineBlocksOnDemand = true;
+        // address:mtkXqYXjPB3EChJcEq8bJJfeRrCsotFxhs
+        // private key:cQLJjWeqTCCLLrNTwbRAUG7Fcwvs4BNo5GGT6AdNWS82na3EzdNE
+        cCheckPointPubKey= CPubKey(ParseHex("02246a362f9f887db8d33185ad1f72512884618f6789e279c34a86e18590c78154"));
 
         checkpointData = (CCheckpointData) {
             {
@@ -330,6 +378,7 @@ public:
         base58Prefixes[EXT_PUBLIC_KEY] = {0x04, 0x35, 0x87, 0xCF};
         base58Prefixes[EXT_SECRET_KEY] = {0x04, 0x35, 0x83, 0x94};
     }
+
 };
 
 static std::unique_ptr<CChainParams> globalChainParams;
